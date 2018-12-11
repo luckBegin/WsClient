@@ -12,13 +12,15 @@ const WsServe = new WebSocket.Server({
 
 var timer = null ; 
 
+var state = 'wait' ; 
+
 const strategy =  {
     "save" : function( data ){
-        if(data && data.name){
-            if( hasConnected[data.name]){
+        if(data && data.id){
+            if( hasConnected[data.id]){
                 console.log("current user has connected") ;
-            }else{
-                hasConnected[data.name] = true ; 
+            }else{ 
+                hasConnected[data.id] = true ; 
                 data.count = 0 ;
                 currentConnect.push(data) ;
 
@@ -50,14 +52,16 @@ const strategy =  {
         ws.send(JSON.stringify({"action" : "getAward" , "data" : hasAward }));
     } ,
     "shake" : function(data ,ws ){
-        var name = data.name ; 
+
+        if(state === 'wait')
+            return ;
+
+        var id = data.id ; 
 
         currentConnect.forEach( item => {
-            if(item.name === name )
+            if(item.id === id )
                 item.count += 100 ; 
         });
-
-        console.log(currentConnect)
     } , 
     getRank : function( data , ws){
         currentConnect.sort(ObjSort("count")) ; 
@@ -69,7 +73,14 @@ const strategy =  {
         var time = data.time  ; 
 
         var award = data.award ;
-        
+
+        currentConnect.forEach( item => {
+            item.count = 0 ;
+        });
+
+
+        state = 'start' ; 
+
         if(timer)
             return ;
 
@@ -78,17 +89,20 @@ const strategy =  {
             time -- ; 
 
             let data = currentConnect.sort(ObjSort("count")).slice( 0 , award )
-            if( time === 1 ){
+            if( time === -1 ){
                 clearInterval(timer) ;
 
                 timer = null ; 
 
                 hasAward = hasAward.concat( data ) ;
 
+                state = 'wait' ; 
+
                 WsServe.clients.forEach( ( client ) => {
                     client.send(JSON.stringify({action : 'end' , data : data }))
                 });
 
+                hasAward = currentConnect.splice(0 , 10 ) ;
             }else{
                 WsServe.clients.forEach( ( client ) => {
                     client.send(JSON.stringify({action : 'start' ,data : data , time : time }))
