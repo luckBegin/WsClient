@@ -7,7 +7,7 @@ const hasConnected = {} ;
 const hasAward = {} ;
 
 const WsServe = new WebSocket.Server({
-  port: 8080,
+  port: 3000,
 });
 
 
